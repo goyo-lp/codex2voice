@@ -1,0 +1,41 @@
+{
+  "name": "codex2voice",
+  "version": "0.1.0",
+  "description": "ElevenLabs voice companion CLI for Codex",
+  "type": "module",
+  "bin": {
+    "codex2voice": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/cli.ts --format esm --dts --clean",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "check": "tsc --noEmit"
+  },
+  "keywords": [
+    "codex",
+    "voice",
+    "elevenlabs",
+    "cli"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^14.0.3",
+    "execa": "^9.6.1",
+    "inquirer": "^13.3.0",
+    "keytar": "^7.9.0",
+    "pino": "^10.3.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

@@ -18,6 +18,11 @@ const SESSIONS_DIR = path.join(os.homedir(), '.codex', 'sessions');
 const POLL_INTERVAL_MS = 140;
 const DISCOVERY_INTERVAL_MS = 900;
 
+export function shouldReplayFromStart(stat: { birthtimeMs: number }, wrapperStartedAt: number): boolean {
+  if (!Number.isFinite(stat.birthtimeMs) || stat.birthtimeMs <= 0) return false;
+  return stat.birthtimeMs >= wrapperStartedAt - 5000;
+}
+
 function getSessionDayDir(date: Date): string {
   const yyyy = date.getFullYear().toString();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -103,10 +108,9 @@ export async function runCodexWrapper(args: string[], options: CodexWrapperOptio
         if (trackedFiles.has(filePath)) return;
         try {
           const stat = await fs.stat(filePath);
-          const recentMs = Math.max(stat.birthtimeMs || 0, stat.mtimeMs || 0);
-          const shouldReplayFromStart = recentMs >= wrapperStartedAt - 5000;
-          trackedFiles.set(filePath, { offset: shouldReplayFromStart ? 0 : stat.size });
-          debug(`tracking file: ${filePath} from offset=${shouldReplayFromStart ? 0 : stat.size}`);
+          const replayFromStart = shouldReplayFromStart(stat, wrapperStartedAt);
+          trackedFiles.set(filePath, { offset: replayFromStart ? 0 : stat.size });
+          debug(`tracking file: ${filePath} from offset=${replayFromStart ? 0 : stat.size}`);
         } catch {
           // ignore unreadable files
         }

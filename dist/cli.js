@@ -840,9 +840,69 @@ async function runIngestFromStdin(force = false) {
   console.log(result.spoken ? `Spoken (${result.reason}).` : `Skipped (${result.reason}).`);
 }
 
+// package.json
+var package_default = {
+  name: "codex2voice",
+  version: "0.1.2",
+  description: "ElevenLabs voice companion CLI for Codex",
+  repository: {
+    type: "git",
+    url: "git+https://github.com/goyo-lp/codex2voice.git"
+  },
+  bugs: {
+    url: "https://github.com/goyo-lp/codex2voice/issues"
+  },
+  homepage: "https://github.com/goyo-lp/codex2voice#readme",
+  type: "module",
+  bin: {
+    codex2voice: "dist/cli.js"
+  },
+  files: [
+    "dist"
+  ],
+  scripts: {
+    build: "tsup src/cli.ts --format esm --dts --clean --external keytar",
+    prepack: "npm run build",
+    dev: "tsx src/cli.ts",
+    test: "vitest run",
+    check: "tsc --noEmit"
+  },
+  keywords: [
+    "codex",
+    "voice",
+    "elevenlabs",
+    "cli"
+  ],
+  author: "Goyo Lozano",
+  license: "ISC",
+  engines: {
+    node: ">=20"
+  },
+  os: [
+    "darwin"
+  ],
+  publishConfig: {
+    access: "public"
+  },
+  dependencies: {
+    commander: "^14.0.3",
+    execa: "^9.6.1",
+    inquirer: "^13.3.0",
+    pino: "^10.3.1",
+    zod: "^4.3.6"
+  },
+  devDependencies: {
+    "@types/node": "^25.3.2",
+    tsup: "^8.5.1",
+    tsx: "^4.21.0",
+    typescript: "^5.9.3",
+    vitest: "^4.0.18"
+  }
+};
+
 // src/cli.ts
 var program = new Command();
-program.name("codex2voice").description("ElevenLabs voice companion for Codex CLI").version("0.1.0");
+program.name("codex2voice").description("ElevenLabs voice companion for Codex CLI").version(package_default.version);
 program.command("init").description("Run guided setup").action(runInit);
 program.command("on").description("Enable voice").action(setVoiceOn);
 program.command("off").description("Disable voice").action(setVoiceOff);

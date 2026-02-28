@@ -8,13 +8,14 @@ import { runStop } from './commands/stop.js';
 import { runUninstall } from './commands/uninstall.js';
 import { runCodexWrapper } from './commands/codex.js';
 import { runIngestFromStdin } from './commands/ingest.js';
+import pkg from '../package.json' with { type: 'json' };
 
 const program = new Command();
 
 program
   .name('codex2voice')
   .description('ElevenLabs voice companion for Codex CLI')
-  .version('0.1.0');
+  .version(pkg.version);
 
 program.command('init').description('Run guided setup').action(runInit);
 program.command('on').description('Enable voice').action(setVoiceOn);

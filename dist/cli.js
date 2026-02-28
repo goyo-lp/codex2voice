@@ -118,10 +118,24 @@ async function deleteApiKey() {
 }
 
 // src/commands/init.ts
+var WRAPPER_MARKER = "# codex2voice wrapper";
+var CODEX_ALIAS_LINE = "alias codex='codex2voice codex --'";
+var OPT_IN_ALIAS_LINE = "alias codex-voice='codex2voice codex --'";
+function upsertWrapperAliases(content) {
+  if (content.includes(CODEX_ALIAS_LINE)) {
+    return { nextContent: content, changed: false };
+  }
+  const cleaned = content.replace(/\n# codex2voice wrapper[^\n]*\n?/g, "\n").replace(/\nalias codex-voice='codex2voice codex --'\n?/g, "\n").replace(/\nalias codex='codex2voice codex --'\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trimEnd();
+  const block = `
+
+${WRAPPER_MARKER}
+${CODEX_ALIAS_LINE}
+${OPT_IN_ALIAS_LINE}
+`;
+  return { nextContent: `${cleaned}${block}`, changed: true };
+}
 async function appendAliasIfMissing() {
   const zshrc = path3.join(os2.homedir(), ".zshrc");
-  const marker = "# codex2voice wrapper";
-  const aliasLine = "alias codex='codex2voice codex --'";
   try {
     let content = "";
     try {
@@ -129,14 +143,11 @@ async function appendAliasIfMissing() {
     } catch {
       content = "";
     }
-    if (content.includes(aliasLine) || content.includes(marker)) {
+    const { nextContent, changed } = upsertWrapperAliases(content);
+    if (!changed) {
       return "exists";
     }
-    const block = `
-${marker}
-${aliasLine}
-`;
-    await fs4.appendFile(zshrc, block, "utf8");
+    await fs4.writeFile(zshrc, nextContent, "utf8");
     return "added";
   } catch {
     return "failed";
@@ -200,7 +211,7 @@ async function runInit() {
   }
   console.log("Initialization complete.");
   console.log(savedToKeychain ? "API key stored in macOS Keychain." : "Could not store key in Keychain. Set ELEVENLABS_API_KEY in your shell env.");
-  if (aliasStatus === "added") console.log("Added codex wrapper alias to ~/.zshrc. Open a new shell session.");
+  if (aliasStatus === "added") console.log("Configured codex wrapper aliases in ~/.zshrc. Open a new shell session or run `source ~/.zshrc`.");
   if (aliasStatus === "exists") console.log("Wrapper alias already exists in ~/.zshrc.");
   if (aliasStatus === "failed") console.log("Could not update ~/.zshrc automatically. Add alias manually: alias codex='codex2voice codex --'");
   console.log("Next: run `codex2voice doctor` then `codex2voice status`.");
@@ -576,11 +587,14 @@ import fs7 from "fs/promises";
 import os3 from "os";
 import path5 from "path";
 import inquirer2 from "inquirer";
+function removeWrapperAliases(content) {
+  return content.replace(/\n# codex2voice wrapper[^\n]*\n?/g, "\n").replace(/\nalias codex='codex2voice codex --'\n?/g, "\n").replace(/\nalias codex-voice='codex2voice codex --'\n?/g, "\n").replace(/\n{3,}/g, "\n\n");
+}
 async function removeAliasBlock() {
   const zshrc = path5.join(os3.homedir(), ".zshrc");
   try {
     const content = await fs7.readFile(zshrc, "utf8");
-    const cleaned = content.replace(/\n# codex2voice wrapper\nalias codex='codex2voice codex --'\n?/g, "\n").replace(/\n{3,}/g, "\n\n");
+    const cleaned = removeWrapperAliases(content);
     await fs7.writeFile(zshrc, cleaned, "utf8");
   } catch {
   }
@@ -846,7 +860,7 @@ async function runIngestFromStdin(force = false) {
 // package.json
 var package_default = {
   name: "codex2voice",
-  version: "0.1.3",
+  version: "0.1.4",
   description: "ElevenLabs voice companion CLI for Codex",
   repository: {
     type: "git",

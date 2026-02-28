@@ -5,13 +5,19 @@ import inquirer from 'inquirer';
 import { PATHS } from '../state/paths.js';
 import { deleteApiKey } from '../state/keychain.js';
 
+export function removeWrapperAliases(content: string): string {
+  return content
+    .replace(/\n# codex2voice wrapper[^\n]*\n?/g, '\n')
+    .replace(/\nalias codex='codex2voice codex --'\n?/g, '\n')
+    .replace(/\nalias codex-voice='codex2voice codex --'\n?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
 async function removeAliasBlock(): Promise<void> {
   const zshrc = path.join(os.homedir(), '.zshrc');
   try {
     const content = await fs.readFile(zshrc, 'utf8');
-    const cleaned = content
-      .replace(/\n# codex2voice wrapper\nalias codex='codex2voice codex --'\n?/g, '\n')
-      .replace(/\n{3,}/g, '\n\n');
+    const cleaned = removeWrapperAliases(content);
     await fs.writeFile(zshrc, cleaned, 'utf8');
   } catch {
     // ignore

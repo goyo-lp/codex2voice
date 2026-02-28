@@ -5,10 +5,28 @@ import inquirer from 'inquirer';
 import { readConfig, writeConfig } from '../state/config.js';
 import { setApiKey } from '../state/keychain.js';
 
+const WRAPPER_MARKER = '# codex2voice wrapper';
+const CODEX_ALIAS_LINE = "alias codex='codex2voice codex --'";
+const OPT_IN_ALIAS_LINE = "alias codex-voice='codex2voice codex --'";
+
+export function upsertWrapperAliases(content: string): { nextContent: string; changed: boolean } {
+  if (content.includes(CODEX_ALIAS_LINE)) {
+    return { nextContent: content, changed: false };
+  }
+
+  const cleaned = content
+    .replace(/\n# codex2voice wrapper[^\n]*\n?/g, '\n')
+    .replace(/\nalias codex-voice='codex2voice codex --'\n?/g, '\n')
+    .replace(/\nalias codex='codex2voice codex --'\n?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd();
+
+  const block = `\n\n${WRAPPER_MARKER}\n${CODEX_ALIAS_LINE}\n${OPT_IN_ALIAS_LINE}\n`;
+  return { nextContent: `${cleaned}${block}`, changed: true };
+}
+
 async function appendAliasIfMissing(): Promise<'added' | 'exists' | 'failed'> {
   const zshrc = path.join(os.homedir(), '.zshrc');
-  const marker = '# codex2voice wrapper';
-  const aliasLine = "alias codex='codex2voice codex --'";
 
   try {
     let content = '';
@@ -18,12 +36,12 @@ async function appendAliasIfMissing(): Promise<'added' | 'exists' | 'failed'> {
       content = '';
     }
 
-    if (content.includes(aliasLine) || content.includes(marker)) {
+    const { nextContent, changed } = upsertWrapperAliases(content);
+    if (!changed) {
       return 'exists';
     }
 
-    const block = `\n${marker}\n${aliasLine}\n`;
-    await fs.appendFile(zshrc, block, 'utf8');
+    await fs.writeFile(zshrc, nextContent, 'utf8');
     return 'added';
   } catch {
     return 'failed';
@@ -93,7 +111,7 @@ export async function runInit(): Promise<void> {
 
   console.log('Initialization complete.');
   console.log(savedToKeychain ? 'API key stored in macOS Keychain.' : 'Could not store key in Keychain. Set ELEVENLABS_API_KEY in your shell env.');
-  if (aliasStatus === 'added') console.log('Added codex wrapper alias to ~/.zshrc. Open a new shell session.');
+  if (aliasStatus === 'added') console.log('Configured codex wrapper aliases in ~/.zshrc. Open a new shell session or run `source ~/.zshrc`.');
   if (aliasStatus === 'exists') console.log('Wrapper alias already exists in ~/.zshrc.');
   if (aliasStatus === 'failed') console.log('Could not update ~/.zshrc automatically. Add alias manually: alias codex=\'codex2voice codex --\'');
 

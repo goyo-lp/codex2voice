@@ -30,8 +30,10 @@ It wraps Codex sessions and turns final assistant responses into audio using Ele
 
 ## Install
 ```bash
-npm i -g codex2voice
+npm i -g git+https://github.com/goyo-lp/codex2voice.git
 ```
+
+`codex2voice` is not yet published on npm, so install from GitHub for now.
 
 ## Step-by-Step Setup
 

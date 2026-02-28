@@ -1,7 +1,15 @@
 {
   "name": "codex2voice",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ElevenLabs voice companion CLI for Codex",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goyo-lp/codex2voice.git"
+  },
+  "bugs": {
+    "url": "https://github.com/goyo-lp/codex2voice/issues"
+  },
+  "homepage": "https://github.com/goyo-lp/codex2voice#readme",
   "type": "module",
   "bin": {
     "codex2voice": "dist/cli.js"
@@ -22,8 +30,17 @@
     "elevenlabs",
     "cli"
   ],
-  "author": "",
+  "author": "Goyo Lozano",
   "license": "ISC",
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "commander": "^14.0.3",
     "execa": "^9.6.1",

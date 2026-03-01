@@ -51,4 +51,14 @@ describe('codex event parsing', () => {
     const candidates = parseSpeechCandidates(raw);
     expect(candidates).toEqual(['Hello.']);
   });
+
+  it('never treats user_message as a speech candidate', () => {
+    const raw = [
+      '{"type":"event_msg","payload":{"type":"user_message","message":"hello"}}',
+      '{"type":"event_msg","payload":{"type":"agent_message","phase":"final_answer","message":"Hi."}}'
+    ].join('\n');
+
+    const candidates = parseSpeechCandidates(raw);
+    expect(candidates).toEqual(['Hi.']);
+  });
 });

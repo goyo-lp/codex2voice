@@ -17,10 +17,15 @@ type CodexWrapperOptions = {
 const SESSIONS_DIR = path.join(os.homedir(), '.codex', 'sessions');
 const POLL_INTERVAL_MS = 140;
 const DISCOVERY_INTERVAL_MS = 900;
+const DUPLICATE_SPEECH_WINDOW_MS = 8000;
 
 export function shouldReplayFromStart(stat: { birthtimeMs: number }, wrapperStartedAt: number): boolean {
   if (!Number.isFinite(stat.birthtimeMs) || stat.birthtimeMs <= 0) return false;
   return stat.birthtimeMs >= wrapperStartedAt - 5000;
+}
+
+export function normalizeSpeechKey(message: string): string {
+  return message.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 function getSessionDayDir(date: Date): string {
@@ -99,7 +104,7 @@ export async function runCodexWrapper(args: string[], options: CodexWrapperOptio
   };
 
   const trackedFiles = new Map<string, TrackedFile>();
-  const spokenKeys = new Set<string>();
+  const recentMessages = new Map<string, number>();
 
   const seedTrackedFiles = async (): Promise<void> => {
     const files = await listSessionFilesFast();
@@ -119,9 +124,15 @@ export async function runCodexWrapper(args: string[], options: CodexWrapperOptio
   };
 
   let speechQueue: Promise<void> = Promise.resolve();
-  const enqueueSpeech = (message: string, key: string): void => {
-    if (spokenKeys.has(key)) return;
-    spokenKeys.add(key);
+  const enqueueSpeech = (message: string): void => {
+    const now = Date.now();
+    const messageKey = normalizeSpeechKey(message);
+    const previousAt = recentMessages.get(messageKey);
+    if (previousAt && now - previousAt < DUPLICATE_SPEECH_WINDOW_MS) {
+      debug(`skip duplicate speech within ${DUPLICATE_SPEECH_WINDOW_MS}ms: ${message.slice(0, 120)}`);
+      return;
+    }
+    recentMessages.set(messageKey, now);
 
     speechQueue = speechQueue
       .then(async () => {
@@ -168,8 +179,7 @@ export async function runCodexWrapper(args: string[], options: CodexWrapperOptio
       for (let i = 0; i < candidates.length; i += 1) {
         const message = candidates[i] ?? '';
         if (!message) continue;
-        const key = `${filePath}:${state.offset}:${i}:${message}`;
-        enqueueSpeech(message, key);
+        enqueueSpeech(message);
       }
     }
   };

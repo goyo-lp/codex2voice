@@ -91,7 +91,7 @@ export async function runInit(): Promise<void> {
     }
   ]);
 
-  const savedToKeychain = await setApiKey(answers.apiKey.trim());
+  const keySaveMode = await setApiKey(answers.apiKey.trim());
 
   await writeConfig({
     ...current,
@@ -110,7 +110,13 @@ export async function runInit(): Promise<void> {
   }
 
   console.log('Initialization complete.');
-  console.log(savedToKeychain ? 'API key stored in macOS Keychain.' : 'Could not store key in Keychain. Set ELEVENLABS_API_KEY in your shell env.');
+  if (keySaveMode === 'keychain') {
+    console.log('API key stored in macOS Keychain.');
+  } else if (keySaveMode === 'file') {
+    console.log('API key stored in local codex2voice secret file (~/.codex/voice-secret.json).');
+  } else {
+    console.log('Could not persist API key. Set ELEVENLABS_API_KEY in your shell env.');
+  }
   if (aliasStatus === 'added') console.log('Configured codex wrapper aliases in ~/.zshrc. Open a new shell session or run `source ~/.zshrc`.');
   if (aliasStatus === 'exists') console.log('Wrapper alias already exists in ~/.zshrc.');
   if (aliasStatus === 'failed') console.log('Could not update ~/.zshrc automatically. Add alias manually: alias codex=\'codex2voice codex --\'');

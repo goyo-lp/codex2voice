@@ -4,9 +4,9 @@
 import { Command } from "commander";
 
 // src/commands/init.ts
-import fs4 from "fs/promises";
-import os2 from "os";
-import path3 from "path";
+import fs5 from "fs/promises";
+import os3 from "os";
+import path4 from "path";
 import inquirer from "inquirer";
 
 // src/state/config.ts
@@ -79,8 +79,13 @@ async function updateConfig(partial) {
 }
 
 // src/state/keychain.ts
+import fs4 from "fs/promises";
+import os2 from "os";
+import path3 from "path";
 var SERVICE = "codex2voice";
 var ACCOUNT = "elevenlabs_api_key";
+var CODEX_HOME = process.env.CODEX2VOICE_HOME ?? path3.join(os2.homedir(), ".codex");
+var SECRET_FILE = path3.join(CODEX_HOME, "voice-secret.json");
 var keytarPromise = null;
 async function getKeytar() {
   if (!keytarPromise) {
@@ -88,33 +93,69 @@ async function getKeytar() {
   }
   return keytarPromise;
 }
-async function setApiKey(key) {
+async function setApiKeyToFile(key) {
   try {
-    const keytar = await getKeytar();
-    if (!keytar) return false;
-    await keytar.setPassword(SERVICE, ACCOUNT, key);
+    await fs4.mkdir(CODEX_HOME, { recursive: true });
+    await fs4.writeFile(
+      SECRET_FILE,
+      JSON.stringify({ [ACCOUNT]: key }, null, 2),
+      { encoding: "utf8", mode: 384 }
+    );
+    await fs4.chmod(SECRET_FILE, 384);
     return true;
   } catch {
     return false;
   }
 }
+async function getApiKeyFromFile() {
+  try {
+    const raw = await fs4.readFile(SECRET_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    const value = parsed[ACCOUNT];
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  } catch {
+    return null;
+  }
+}
+async function deleteApiKeyFromFile() {
+  try {
+    await fs4.rm(SECRET_FILE, { force: true });
+  } catch {
+  }
+}
+async function setApiKey(key) {
+  try {
+    const keytar = await getKeytar();
+    if (keytar) {
+      await keytar.setPassword(SERVICE, ACCOUNT, key);
+      return "keychain";
+    }
+  } catch {
+  }
+  return await setApiKeyToFile(key) ? "file" : "none";
+}
 async function getApiKey() {
   try {
     const keytar = await getKeytar();
-    if (!keytar) return process.env.ELEVENLABS_API_KEY ?? null;
-    const fromKeychain = await keytar.getPassword(SERVICE, ACCOUNT);
-    if (fromKeychain) return fromKeychain;
+    if (keytar) {
+      const fromKeychain = await keytar.getPassword(SERVICE, ACCOUNT);
+      if (fromKeychain) return fromKeychain;
+    }
   } catch {
   }
+  const fromFile = await getApiKeyFromFile();
+  if (fromFile) return fromFile;
   return process.env.ELEVENLABS_API_KEY ?? null;
 }
 async function deleteApiKey() {
   try {
     const keytar = await getKeytar();
-    if (!keytar) return;
-    await keytar.deletePassword(SERVICE, ACCOUNT);
+    if (keytar) {
+      await keytar.deletePassword(SERVICE, ACCOUNT);
+    }
   } catch {
   }
+  await deleteApiKeyFromFile();
 }
 
 // src/commands/init.ts
@@ -135,11 +176,11 @@ ${OPT_IN_ALIAS_LINE}
   return { nextContent: `${cleaned}${block}`, changed: true };
 }
 async function appendAliasIfMissing() {
-  const zshrc = path3.join(os2.homedir(), ".zshrc");
+  const zshrc = path4.join(os3.homedir(), ".zshrc");
   try {
     let content = "";
     try {
-      content = await fs4.readFile(zshrc, "utf8");
+      content = await fs5.readFile(zshrc, "utf8");
     } catch {
       content = "";
     }
@@ -147,7 +188,7 @@ async function appendAliasIfMissing() {
     if (!changed) {
       return "exists";
     }
-    await fs4.writeFile(zshrc, nextContent, "utf8");
+    await fs5.writeFile(zshrc, nextContent, "utf8");
     return "added";
   } catch {
     return "failed";
@@ -194,7 +235,7 @@ async function runInit() {
       default: true
     }
   ]);
-  const savedToKeychain = await setApiKey(answers.apiKey.trim());
+  const keySaveMode = await setApiKey(answers.apiKey.trim());
   await writeConfig({
     ...current,
     enabled: Boolean(answers.enabled),
@@ -210,7 +251,13 @@ async function runInit() {
     aliasStatus = await appendAliasIfMissing();
   }
   console.log("Initialization complete.");
-  console.log(savedToKeychain ? "API key stored in macOS Keychain." : "Could not store key in Keychain. Set ELEVENLABS_API_KEY in your shell env.");
+  if (keySaveMode === "keychain") {
+    console.log("API key stored in macOS Keychain.");
+  } else if (keySaveMode === "file") {
+    console.log("API key stored in local codex2voice secret file (~/.codex/voice-secret.json).");
+  } else {
+    console.log("Could not persist API key. Set ELEVENLABS_API_KEY in your shell env.");
+  }
   if (aliasStatus === "added") console.log("Configured codex wrapper aliases in ~/.zshrc. Open a new shell session or run `source ~/.zshrc`.");
   if (aliasStatus === "exists") console.log("Wrapper alias already exists in ~/.zshrc.");
   if (aliasStatus === "failed") console.log("Could not update ~/.zshrc automatically. Add alias manually: alias codex='codex2voice codex --'");
@@ -287,7 +334,7 @@ async function runDoctor() {
 }
 
 // src/state/cache.ts
-import fs5 from "fs/promises";
+import fs6 from "fs/promises";
 import { z as z2 } from "zod";
 var cacheSchema = z2.object({
   lastText: z2.string().default(""),
@@ -302,7 +349,7 @@ var pendingRejectors = [];
 async function readCache() {
   await ensureCodexDir();
   try {
-    const raw = await fs5.readFile(PATHS.cache, "utf8");
+    const raw = await fs6.readFile(PATHS.cache, "utf8");
     return cacheSchema.parse(JSON.parse(raw));
   } catch {
     await writeCache(defaultCache);
@@ -455,8 +502,8 @@ async function synthesizeSpeech(text, config) {
 }
 
 // src/audio/playback.ts
-import fs6 from "fs/promises";
-import path4 from "path";
+import fs7 from "fs/promises";
+import path5 from "path";
 import { spawn } from "child_process";
 import { randomUUID as randomUUID2 } from "crypto";
 
@@ -470,7 +517,7 @@ var logger = pino({
 // src/audio/playback.ts
 async function readPlaybackState() {
   try {
-    const raw = await fs6.readFile(PATHS.playback, "utf8");
+    const raw = await fs7.readFile(PATHS.playback, "utf8");
     return JSON.parse(raw);
   } catch {
     return null;
@@ -491,8 +538,8 @@ async function cleanupStaleState() {
   const state = await readPlaybackState();
   if (!state) return;
   if (!isPidAlive(state.pid)) {
-    await fs6.rm(state.filePath, { force: true });
-    await fs6.rm(PATHS.playback, { force: true });
+    await fs7.rm(state.filePath, { force: true });
+    await fs7.rm(PATHS.playback, { force: true });
   }
 }
 async function stopPlayback() {
@@ -503,8 +550,8 @@ async function stopPlayback() {
     process.kill(state.pid, "SIGTERM");
   } catch {
   }
-  await fs6.rm(state.filePath, { force: true });
-  await fs6.rm(PATHS.playback, { force: true });
+  await fs7.rm(state.filePath, { force: true });
+  await fs7.rm(PATHS.playback, { force: true });
   return true;
 }
 async function playAudioBuffer(buffer) {
@@ -519,8 +566,8 @@ async function playAudioBuffer(buffer) {
   if (current && config.playbackConflictPolicy === "stop-and-replace") {
     await stopPlayback();
   }
-  const filePath = path4.join(PATHS.tempAudioDir, `${randomUUID2()}.mp3`);
-  await fs6.writeFile(filePath, buffer);
+  const filePath = path5.join(PATHS.tempAudioDir, `${randomUUID2()}.mp3`);
+  await fs7.writeFile(filePath, buffer);
   const playbackRate = Math.max(0.5, Math.min(2.5, config.speed));
   const child = spawn("afplay", ["-r", playbackRate.toFixed(2), filePath], {
     detached: true,
@@ -583,19 +630,19 @@ async function runStop() {
 }
 
 // src/commands/uninstall.ts
-import fs7 from "fs/promises";
-import os3 from "os";
-import path5 from "path";
+import fs8 from "fs/promises";
+import os4 from "os";
+import path6 from "path";
 import inquirer2 from "inquirer";
 function removeWrapperAliases(content) {
   return content.replace(/\n# codex2voice wrapper[^\n]*\n?/g, "\n").replace(/\nalias codex='codex2voice codex --'\n?/g, "\n").replace(/\nalias codex-voice='codex2voice codex --'\n?/g, "\n").replace(/\n{3,}/g, "\n\n");
 }
 async function removeAliasBlock() {
-  const zshrc = path5.join(os3.homedir(), ".zshrc");
+  const zshrc = path6.join(os4.homedir(), ".zshrc");
   try {
-    const content = await fs7.readFile(zshrc, "utf8");
+    const content = await fs8.readFile(zshrc, "utf8");
     const cleaned = removeWrapperAliases(content);
-    await fs7.writeFile(zshrc, cleaned, "utf8");
+    await fs8.writeFile(zshrc, cleaned, "utf8");
   } catch {
   }
 }
@@ -612,19 +659,19 @@ async function runUninstall() {
     console.log("Uninstall canceled.");
     return;
   }
-  await fs7.rm(PATHS.config, { force: true });
-  await fs7.rm(PATHS.cache, { force: true });
-  await fs7.rm(PATHS.playback, { force: true });
-  await fs7.rm(PATHS.tempAudioDir, { recursive: true, force: true });
+  await fs8.rm(PATHS.config, { force: true });
+  await fs8.rm(PATHS.cache, { force: true });
+  await fs8.rm(PATHS.playback, { force: true });
+  await fs8.rm(PATHS.tempAudioDir, { recursive: true, force: true });
   await deleteApiKey();
   await removeAliasBlock();
   console.log("codex2voice local state removed.");
 }
 
 // src/commands/codex.ts
-import fs8 from "fs/promises";
-import path6 from "path";
-import os4 from "os";
+import fs9 from "fs/promises";
+import path7 from "path";
+import os5 from "os";
 import { spawn as spawn2 } from "child_process";
 
 // src/commands/codex-events.ts
@@ -696,18 +743,22 @@ function parseSpeechCandidatesDetailed(jsonlChunk, options = {}) {
 }
 
 // src/commands/codex.ts
-var SESSIONS_DIR = path6.join(os4.homedir(), ".codex", "sessions");
+var SESSIONS_DIR = path7.join(os5.homedir(), ".codex", "sessions");
 var POLL_INTERVAL_MS = 140;
 var DISCOVERY_INTERVAL_MS = 900;
+var DUPLICATE_SPEECH_WINDOW_MS = 8e3;
 function shouldReplayFromStart(stat, wrapperStartedAt) {
   if (!Number.isFinite(stat.birthtimeMs) || stat.birthtimeMs <= 0) return false;
   return stat.birthtimeMs >= wrapperStartedAt - 5e3;
+}
+function normalizeSpeechKey(message) {
+  return message.trim().replace(/\s+/g, " ").toLowerCase();
 }
 function getSessionDayDir(date) {
   const yyyy = date.getFullYear().toString();
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const dd = String(date.getDate()).padStart(2, "0");
-  return path6.join(SESSIONS_DIR, yyyy, mm, dd);
+  return path7.join(SESSIONS_DIR, yyyy, mm, dd);
 }
 async function listSessionFilesFast() {
   const today = getSessionDayDir(/* @__PURE__ */ new Date());
@@ -716,11 +767,11 @@ async function listSessionFilesFast() {
   const files = [];
   for (const dir of dirs) {
     try {
-      const entries = await fs8.readdir(dir, { withFileTypes: true });
+      const entries = await fs9.readdir(dir, { withFileTypes: true });
       for (const entry of entries) {
         if (!entry.isFile()) continue;
         if (!entry.name.endsWith(".jsonl")) continue;
-        files.push(path6.join(dir, entry.name));
+        files.push(path7.join(dir, entry.name));
       }
     } catch {
     }
@@ -740,12 +791,12 @@ function buildCodexArgs(userArgs) {
   ];
 }
 async function readAppendedChunk(filePath, offset) {
-  const stat = await fs8.stat(filePath);
+  const stat = await fs9.stat(filePath);
   const size = stat.size;
   const safeOffset = offset > size ? 0 : offset;
   const length = size - safeOffset;
   if (length <= 0) return { nextOffset: size, chunk: "" };
-  const handle = await fs8.open(filePath, "r");
+  const handle = await fs9.open(filePath, "r");
   try {
     const buffer = Buffer.alloc(length);
     await handle.read(buffer, 0, length, safeOffset);
@@ -764,14 +815,14 @@ async function runCodexWrapper(args, options = {}) {
     console.error(`[codex2voice debug] ${line}`);
   };
   const trackedFiles = /* @__PURE__ */ new Map();
-  const spokenKeys = /* @__PURE__ */ new Set();
+  const recentMessages = /* @__PURE__ */ new Map();
   const seedTrackedFiles = async () => {
     const files = await listSessionFilesFast();
     await Promise.all(
       files.map(async (filePath) => {
         if (trackedFiles.has(filePath)) return;
         try {
-          const stat = await fs8.stat(filePath);
+          const stat = await fs9.stat(filePath);
           const replayFromStart = shouldReplayFromStart(stat, wrapperStartedAt);
           trackedFiles.set(filePath, { offset: replayFromStart ? 0 : stat.size });
           debug(`tracking file: ${filePath} from offset=${replayFromStart ? 0 : stat.size}`);
@@ -781,9 +832,15 @@ async function runCodexWrapper(args, options = {}) {
     );
   };
   let speechQueue = Promise.resolve();
-  const enqueueSpeech = (message, key) => {
-    if (spokenKeys.has(key)) return;
-    spokenKeys.add(key);
+  const enqueueSpeech = (message) => {
+    const now = Date.now();
+    const messageKey = normalizeSpeechKey(message);
+    const previousAt = recentMessages.get(messageKey);
+    if (previousAt && now - previousAt < DUPLICATE_SPEECH_WINDOW_MS) {
+      debug(`skip duplicate speech within ${DUPLICATE_SPEECH_WINDOW_MS}ms: ${message.slice(0, 120)}`);
+      return;
+    }
+    recentMessages.set(messageKey, now);
     speechQueue = speechQueue.then(async () => {
       debug(`enqueue speech: ${message.slice(0, 120)}`);
       await setLastText(message);
@@ -816,13 +873,12 @@ async function runCodexWrapper(args, options = {}) {
       if (!chunk) continue;
       const { candidates, traces } = parseSpeechCandidatesDetailed(chunk, { debug: debugEvents });
       for (const trace of traces) {
-        debug(`${path6.basename(filePath)}: ${trace}`);
+        debug(`${path7.basename(filePath)}: ${trace}`);
       }
       for (let i = 0; i < candidates.length; i += 1) {
         const message = candidates[i] ?? "";
         if (!message) continue;
-        const key = `${filePath}:${state.offset}:${i}:${message}`;
-        enqueueSpeech(message, key);
+        enqueueSpeech(message);
       }
     }
   };
@@ -867,7 +923,7 @@ async function runIngestFromStdin(force = false) {
 // package.json
 var package_default = {
   name: "codex2voice",
-  version: "0.1.5",
+  version: "0.1.6",
   description: "ElevenLabs voice companion CLI for Codex",
   repository: {
     type: "git",

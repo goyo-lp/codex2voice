@@ -639,6 +639,16 @@ function parseSpeechCandidatesDetailed(jsonlChunk, options = {}) {
   const candidates = [];
   const traces = [];
   const debug = Boolean(options.debug);
+  let lastAccepted = null;
+  const pushCandidate = (message, line, source) => {
+    if (lastAccepted && lastAccepted.message === message && line - lastAccepted.line <= 5) {
+      if (debug) traces.push(`line ${line}: dedupe ${source}`);
+      return;
+    }
+    candidates.push(message);
+    lastAccepted = { message, line };
+    if (debug) traces.push(`line ${line}: accept ${source}`);
+  };
   const lines = jsonlChunk.split("\n");
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? "";
@@ -654,8 +664,7 @@ function parseSpeechCandidatesDetailed(jsonlChunk, options = {}) {
     if (event.type === "event_msg" && event.payload?.type === "agent_message" && event.payload?.phase === "final_answer") {
       const msg = (event.payload.message ?? event.payload.last_agent_message ?? "").trim();
       if (msg) {
-        candidates.push(msg);
-        if (debug) traces.push(`line ${index + 1}: accept event_msg.agent_message.final_answer`);
+        pushCandidate(msg, index + 1, "event_msg.agent_message.final_answer");
       } else if (debug) {
         traces.push(`line ${index + 1}: reject empty event_msg.agent_message.final_answer`);
       }
@@ -664,8 +673,7 @@ function parseSpeechCandidatesDetailed(jsonlChunk, options = {}) {
     if (event.type === "event_msg" && event.payload?.type === "task_complete") {
       const msg = event.payload.last_agent_message?.trim();
       if (msg) {
-        candidates.push(msg);
-        if (debug) traces.push(`line ${index + 1}: accept event_msg.task_complete.last_agent_message`);
+        pushCandidate(msg, index + 1, "event_msg.task_complete.last_agent_message");
       } else if (debug) {
         traces.push(`line ${index + 1}: reject empty event_msg.task_complete`);
       }
@@ -674,8 +682,7 @@ function parseSpeechCandidatesDetailed(jsonlChunk, options = {}) {
     if (event.type === "response_item") {
       const msg = extractFinalAnswerFromResponseItem(event.payload);
       if (msg) {
-        candidates.push(msg);
-        if (debug) traces.push(`line ${index + 1}: accept response_item.message.final_answer`);
+        pushCandidate(msg, index + 1, "response_item.message.final_answer");
       } else if (debug) {
         traces.push(`line ${index + 1}: reject response_item not final assistant text`);
       }
@@ -860,7 +867,7 @@ async function runIngestFromStdin(force = false) {
 // package.json
 var package_default = {
   name: "codex2voice",
-  version: "0.1.4",
+  version: "0.1.5",
   description: "ElevenLabs voice companion CLI for Codex",
   repository: {
     type: "git",

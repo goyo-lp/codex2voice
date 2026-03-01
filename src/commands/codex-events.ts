@@ -47,6 +47,19 @@ export function parseSpeechCandidatesDetailed(
   const candidates: string[] = [];
   const traces: string[] = [];
   const debug = Boolean(options.debug);
+  let lastAccepted: { message: string; line: number } | null = null;
+
+  const pushCandidate = (message: string, line: number, source: string): void => {
+    // Codex often emits the same final answer in adjacent event shapes
+    // (agent_message, response_item, task_complete). Keep only one.
+    if (lastAccepted && lastAccepted.message === message && line - lastAccepted.line <= 5) {
+      if (debug) traces.push(`line ${line}: dedupe ${source}`);
+      return;
+    }
+    candidates.push(message);
+    lastAccepted = { message, line };
+    if (debug) traces.push(`line ${line}: accept ${source}`);
+  };
 
   const lines = jsonlChunk.split('\n');
   for (let index = 0; index < lines.length; index += 1) {
@@ -69,8 +82,7 @@ export function parseSpeechCandidatesDetailed(
     ) {
       const msg = (event.payload.message ?? event.payload.last_agent_message ?? '').trim();
       if (msg) {
-        candidates.push(msg);
-        if (debug) traces.push(`line ${index + 1}: accept event_msg.agent_message.final_answer`);
+        pushCandidate(msg, index + 1, 'event_msg.agent_message.final_answer');
       } else if (debug) {
         traces.push(`line ${index + 1}: reject empty event_msg.agent_message.final_answer`);
       }
@@ -80,8 +92,7 @@ export function parseSpeechCandidatesDetailed(
     if (event.type === 'event_msg' && event.payload?.type === 'task_complete') {
       const msg = event.payload.last_agent_message?.trim();
       if (msg) {
-        candidates.push(msg);
-        if (debug) traces.push(`line ${index + 1}: accept event_msg.task_complete.last_agent_message`);
+        pushCandidate(msg, index + 1, 'event_msg.task_complete.last_agent_message');
       } else if (debug) {
         traces.push(`line ${index + 1}: reject empty event_msg.task_complete`);
       }
@@ -91,8 +102,7 @@ export function parseSpeechCandidatesDetailed(
     if (event.type === 'response_item') {
       const msg = extractFinalAnswerFromResponseItem(event.payload);
       if (msg) {
-        candidates.push(msg);
-        if (debug) traces.push(`line ${index + 1}: accept response_item.message.final_answer`);
+        pushCandidate(msg, index + 1, 'response_item.message.final_answer');
       } else if (debug) {
         traces.push(`line ${index + 1}: reject response_item not final assistant text`);
       }

@@ -40,4 +40,15 @@ describe('codex event parsing', () => {
     expect(result.candidates).toEqual(['Final usable answer.']);
     expect(result.traces.length).toBeGreaterThan(0);
   });
+
+  it('dedupes equivalent final answer across adjacent event types', () => {
+    const raw = [
+      '{"type":"event_msg","payload":{"type":"agent_message","phase":"final_answer","message":"Hello."}}',
+      '{"type":"response_item","payload":{"type":"message","role":"assistant","phase":"final_answer","content":[{"type":"output_text","text":"Hello."}]}}',
+      '{"type":"event_msg","payload":{"type":"task_complete","last_agent_message":"Hello."}}'
+    ].join('\n');
+
+    const candidates = parseSpeechCandidates(raw);
+    expect(candidates).toEqual(['Hello.']);
+  });
 });

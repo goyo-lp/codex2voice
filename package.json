@@ -1,6 +1,6 @@
 {
   "name": "codex2voice",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "ElevenLabs voice companion CLI for Codex",
   "repository": {
     "type": "git",

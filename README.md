@@ -30,7 +30,7 @@ It wraps Codex sessions and turns final assistant responses into audio using Ele
 
 ## Install
 ```bash
-npm i -g codex2voice
+npm i -g @glozanop/codex2voice
 ```
 
 If npm publish is pending, use:

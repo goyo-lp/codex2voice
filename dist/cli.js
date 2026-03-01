@@ -922,8 +922,8 @@ async function runIngestFromStdin(force = false) {
 
 // package.json
 var package_default = {
-  name: "codex2voice",
-  version: "0.1.6",
+  name: "@glozanop/codex2voice",
+  version: "0.1.0",
   description: "ElevenLabs voice companion CLI for Codex",
   repository: {
     type: "git",

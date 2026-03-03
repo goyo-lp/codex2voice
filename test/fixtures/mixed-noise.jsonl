@@ -1,0 +1,4 @@
+{"timestamp":"2026-02-28T20:42:56.515Z","type":"event_msg","payload":{"type":"agent_message","message":"Thinking...","phase":"commentary"}}
+{"timestamp":"2026-02-28T20:42:56.515Z","type":"event_msg","payload":{"type":"task_started"}}
+{"timestamp":"2026-02-28T20:42:56.515Z","type":"response_item","payload":{"type":"message","role":"assistant","phase":"commentary","content":[{"type":"output_text","text":"Interim"}]}}
+{"timestamp":"2026-02-28T20:42:56.515Z","type":"event_msg","payload":{"type":"agent_message","message":"Final usable answer.","phase":"final_answer"}}

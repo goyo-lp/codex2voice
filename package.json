@@ -1,0 +1,66 @@
+{
+  "name": "@glozanop/codex2voice",
+  "version": "0.1.3",
+  "description": "ElevenLabs voice companion CLI for Codex",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goyo-lp/codex2voice.git"
+  },
+  "bugs": {
+    "url": "https://github.com/goyo-lp/codex2voice/issues"
+  },
+  "homepage": "https://github.com/goyo-lp/codex2voice#readme",
+  "type": "module",
+  "bin": {
+    "codex2voice": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "scripts",
+    "skills"
+  ],
+  "scripts": {
+    "build": "tsup src/cli.ts --format esm --dts --clean --external keytar",
+    "prepack": "npm run build",
+    "postinstall": "node ./scripts/postinstall.mjs",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "check": "tsc --noEmit",
+    "local:install": "sh ./scripts/local-install.sh",
+    "local:install:tarball": "sh ./scripts/local-install-tarball.sh",
+    "local:install:skills": "sh ./scripts/install-skills.sh",
+    "local:uninstall": "sh ./scripts/local-uninstall.sh",
+    "local:reinstall": "npm run local:uninstall && npm run local:install"
+  },
+  "keywords": [
+    "codex",
+    "voice",
+    "elevenlabs",
+    "cli"
+  ],
+  "author": "Goyo Lozano",
+  "license": "ISC",
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "execa": "^9.6.1",
+    "inquirer": "^13.3.0",
+    "pino": "^10.3.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
